@@ -29,8 +29,9 @@ ok_name = {0:'不可', 1:'可'}
 
 names = []
 
-def write_output(f, row):
-    outdata = names[0] + ': ' + row[0] + '\n'
+def write_output(f, row, index):
+    outdata = "物件ID: " + str(index+1) + '\n'
+    outdata += names[0] + ': ' + row[0] + '\n'
     outdata += names[5] + ': ' + status_name[int(row[5])] + '\n'
     outdata += names[6] + ': ' + type_name[int(row[6])] + '\n'
     outdata += names[9] + ': ' + row[9] + '\n'
@@ -49,7 +50,7 @@ def write_output(f, row):
     for i in range(10):
 
         if row[89+i*4].strip() == '':
-            print(i)
+            #print(i)
             continue
         outdata += '間取' + str(i+1) +'の種類: ' + room_type_name[int(row[89+i*4])] + '\n'
         outdata += '間取' + str(i+1) +'の畳数: ' + row[90+i*4] + '畳\n'
@@ -88,7 +89,7 @@ with open('homes.csv','r',encoding='cp932') as f:
         elif index == 1:
             names = row
         else:
-            write_output(fout, row)
+            write_output(fout, row, index)
 
 
 fout.close()

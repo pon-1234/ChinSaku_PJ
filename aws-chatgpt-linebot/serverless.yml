@@ -1,0 +1,43 @@
+service: aws-chapgpt-linebot
+provider:
+  name: aws
+  stage: dev
+  region: ap-northeast-1
+  runtime: python3.10
+  environment:
+    Channel_access_token: sddKWFGNiB1evjm3Tq83Bfh4OEqZXdzaLTzd4CMY5C3gkOG3PcgXZRlFXCjZxxv1hdxv5Cj3yKRYyA4Ltb8aC9hHj2ErOl5/HaXe0xVgQx53akhBE/no7mCxwQtIHohximH58+6jqCxYi77JxvGpSAdB04t89/1O/w1cDnyilFU=
+    Channel_secret: 81b795416d4b1a254ba867b9eeaa9b1e
+    openAI_API_token: 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
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource:
+            - "arn:aws:dynamodb:${aws:region}:*:table/chat-conversation-table"
+
+functions:
+  line_bot:
+    handler: handler.webhook
+    events:
+      - http:
+          path: /webhook
+          method: POST
+
+plugins:
+  - serverless-python-requirements
+
+resources:
+  Resources:
+    ConversationTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: chat-conversation-table
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

@@ -1,0 +1,3 @@
+boto3
+line-bot-sdk==1.12.1
+openai

@@ -1,5 +1,8 @@
 import os
 import json
+os.environ["openAI_API_token"] = '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'
+os.environ["Channel_access_token"] = 'sddKWFGNiB1evjm3Tq83Bfh4OEqZXdzaLTzd4CMY5C3gkOG3PcgXZRlFXCjZxxv1hdxv5Cj3yKRYyA4Ltb8aC9hHj2ErOl5/HaXe0xVgQx53akhBE/no7mCxwQtIHohximH58+6jqCxYi77JxvGpSAdB04t89/1O/w1cDnyilFU='
+os.environ["Channel_secret"] = '81b795416d4b1a254ba867b9eeaa9b1e'
 import openai
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
@@ -11,7 +14,8 @@ from linebot import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
-from flask import Flask, request
+from flask import Flask, request as fr
+import urllib.request as ur, json
 
 '''
 Setting LINE
@@ -23,6 +27,13 @@ handler = WebhookHandler(os.environ['Channel_secret'])
 Setting OpenAI
 '''
 openai.api_key = os.environ['openAI_API_token']
+
+'''
+Setting IndexSearch
+'''
+url = "http://127.0.0.1:5001"
+method = "POST"
+headers = {"Content-Type" : "application/json"}
 
 dynamodb = boto3.resource('dynamodb')
 table_name = 'chat-conversation-table'
@@ -71,14 +82,14 @@ def resetSession(conversation):
 def webhook():
     # Parse msg from LINE conversation request
     send_timestamp = int(time.time() * 1000)
-    event = request.json['event']
+    body = fr.get_data(as_text=True)
+    print('request: ', body)
+    event = json.loads(body)
     print('event: ', event)
-    msg = event['body']
-    print('msg: ', msg)
 
     # Parse texts we type from msg
-    user_id = msg['events'][0]['source']['userId']
-    user_input = msg['events'][0]['message']['text']
+    user_id = event['events'][0]['source']['userId']
+    user_input = event['events'][0]['message']['text']
     print('user_id: ', user_id)
     print('user_input:', user_input)
 
@@ -95,10 +106,10 @@ def webhook():
     user_message_obj = {"role": "user", "content": user_input}
     print(f"User message: {user_input}")
     # 履歴の取得
-    message_history = get_message_history(user_id, 'user')
+    message_history = get_message_history(user_id, 'all')
     # 履歴の順序を変えて最新のメッセージを追加
     messages = [{"role": item["message"]["role"], "content": item["message"]["content"]} for item in reversed(message_history)]
-    #messages.append(user_message_obj)
+    messages.append(user_message_obj)
     print(f"Message history: {messages}")
 
 
@@ -120,7 +131,11 @@ def webhook():
     #     }
     
     # indexに問い合わせ
-    response = requests.post('http://127.0.0.1:5001', data={'question': 'bar'})
+    obj = {"question" : user_input}
+    json_data = json.dumps(obj).encode("utf-8")
+    request = ur.Request(url, data=json_data, method=method, headers=headers)
+    with ur.urlopen(request) as response:
+        response_body = response.read().decode("utf-8")
 
     prompt = [
             {"role": "system", "content":"Chatbotの名前は、AIちんさくんです。AIちんさくんは、猿のキャラクターです。以下のAIちんさくんのキャラ設定シートの制約条件などを守って回答してください。\
@@ -150,8 +165,10 @@ def webhook():
             ]
     # if len(conversation['Items']) != 0:
     #    prompt = prompt + conversation['Items'][0]['conversation']
-    if 
-    prompt.append({"role": "user", "content": "内容をAIちんさくん風に話してください。"})
+    #if 
+    prompt.append({"role": "assistant", "content": response_body})
+    #prompt.append({"role": "user", "content": "内容をAIちんさくん風に話してください。"})
+    prompt.append({"role": "user", "content": user_input})
     print('prompt: ', prompt)
     # GPT3
     response = openai.ChatCompletion.create(
@@ -176,7 +193,7 @@ def webhook():
     # handle webhook body
     try:
         line_bot_api.reply_message(
-                msg['events'][0]['replyToken'],
+                event['events'][0]['replyToken'],
                 TextSendMessage(text=gpt3_response)
         )
     except:

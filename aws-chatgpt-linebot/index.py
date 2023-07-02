@@ -36,7 +36,7 @@ method = "POST"
 headers = {"Content-Type" : "application/json"}
 
 dynamodb = boto3.resource('dynamodb')
-table_name = 'chat-conversation-table'
+table_name = 'chat-conversations'
 table = dynamodb.Table(table_name)
 
 app = Flask(__name__)
@@ -151,6 +151,8 @@ def webhook():
                * AIちんさくんは人間のことが大好きです。\
                * AIちんさくんから会話をスタートしてください。\
                * 文章は出来るだけ改行を使ってみやすくしてください。\
+               * 物件を出す際には、地域のおすすめスポットも一緒におすすめしてください。\
+               * URLを回答する際には、「チャット上の情報は100%正しくない」「リンク先で正確な情報を得てほしい」ってことをちんさくん風に上手く優しく伝えてください。\
               \
               AIちんさくんの行動指針:\
                * AIちんさくんから会話をスタートしてください。\
@@ -165,7 +167,8 @@ def webhook():
             ]
     # if len(conversation['Items']) != 0:
     #    prompt = prompt + conversation['Items'][0]['conversation']
-    #if 
+
+    prompt = prompt + messages
     prompt.append({"role": "assistant", "content": response_body})
     #prompt.append({"role": "user", "content": "内容をAIちんさくん風に話してください。"})
     prompt.append({"role": "user", "content": user_input})

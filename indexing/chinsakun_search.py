@@ -28,9 +28,11 @@ def query(question):
     global query_engine
     send_question = "以下のルールを守って回答をしてください。\
         ・日本語で回答する。\
+        ・挨拶だけの場合は検索しないで、挨拶を返す。\
         ・まずは件数を回答する。\
-        ・条件にあうすべての物件の概要を回答する。\
-        ・件数が1件の場合は、物件の詳細と物件URLを必ず回答する。条件の質問は以下です。" + question
+        ・条件にあうすべての物件名を回答する。\
+        ・件数が1件の場合は、物件の詳細と物件URLを必ず回答する。\
+        ・件数が２件以上の場合は、詳細を回答しない。以下の条件に合う物件を探してください。" + question
     response = query_engine.query(send_question)
     print(str(response))
     return str(response)

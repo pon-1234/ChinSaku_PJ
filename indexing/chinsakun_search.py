@@ -45,6 +45,7 @@ def index():
 
     else:
         qdata = request.json['question']
+        print(qdata)
         return query(qdata)
 
 init()

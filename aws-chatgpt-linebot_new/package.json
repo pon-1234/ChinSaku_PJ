@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "serverless-python-requirements": "^6.0.0"
+  },
+  "dependencies": {
+    "moment": "^2.29.4"
+  }
+}

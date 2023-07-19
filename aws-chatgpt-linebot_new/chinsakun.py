@@ -1,8 +1,8 @@
 import os
 import json
 os.environ["openAI_API_token"] = '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'
-os.environ["Channel_access_token"] = 'sddKWFGNiB1evjm3Tq83Bfh4OEqZXdzaLTzd4CMY5C3gkOG3PcgXZRlFXCjZxxv1hdxv5Cj3yKRYyA4Ltb8aC9hHj2ErOl5/HaXe0xVgQx53akhBE/no7mCxwQtIHohximH58+6jqCxYi77JxvGpSAdB04t89/1O/w1cDnyilFU='
-os.environ["Channel_secret"] = '81b795416d4b1a254ba867b9eeaa9b1e'
+os.environ["Channel_access_token"] = 'OEdJ0lMVNxwaCTmnCA+WorNaJmcRSA7ugqIU0ym1HMGuX8eGk0Zo8+Y+8MnXcCFUAmBNhXHoDlehyfLs0RlHb8Gh+EkW6jJxIOdK3tmy1z1h50LKqSy8iBYQY1XbbOyt65Q+tUAJXy8LT9fhu6xbigdB04t89/1O/w1cDnyilFU='
+os.environ["Channel_secret"] = '6306470d029da2ac9d9d0f9a6a30146a'
 import openai
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
@@ -56,7 +56,7 @@ questions = ['次はかならず名前を聞く',
 # 0: 初期値 1: 名前を聞く 2: 現在の住む場所を聞く 3: 引越し先を聞く　4: 動機を聞く　5: 予算を聞く 6: 間取り、7: 物件種別の希望を以下3つから聞いてください 8: 引越しのご希望の駅や、路線はあるか聞いてください
 # 9: 駅までの徒歩分数を聞いてください 
 
-price_conds = ['',' AND 賃料 <= 100000', ' AND 賃料 > 100000 AND 賃料 <= 150000', ' AND 賃料 > 150000', 'AND 賃料 = ']
+price_conds = ['',' AND 賃料 <= 100000', ' AND 賃料 > 100000 AND 賃料 <= 150000', ' AND 賃料 > 150000', '', '']
 room_plan_conds = ['', ' AND 間取部屋数 = 1 AND 間取部屋種類 = 10', 
                    ' AND 間取部屋数 = 1 AND 間取部屋種類 = 20',
                    ' AND 間取部屋数 = 1 AND 間取部屋種類 = 30',
@@ -103,15 +103,15 @@ names = ['自社管理物件番号', '状態', '物件種別', '建物名或い�
 
 dynamodb = boto3.resource('dynamodb')
 #会話保存テーブル
-table_name = 'chat-conversations'
+table_name = 'chat-conversations-prod'
 table = dynamodb.Table(table_name)
 
 #会話進捗状況テーブル
-status_table_name = 'chat-status'
+status_table_name = 'chat-status-prod'
 status_table = dynamodb.Table(status_table_name)
 
 #ユーザ回答保存テーブル
-answer_table_name = 'chat-answers'
+answer_table_name = 'chat-answers-prod'
 answer_table = dynamodb.Table(answer_table_name)
 
 #物件DB
@@ -292,6 +292,24 @@ def parse_answer(answer, step):
 
     return int(select_num)
 
+def checkValidAnswer(step, answer):
+    if step == 4:
+        if answer >= 1 and answer < 5:
+            return True
+    elif step == 5:
+        if answer >= 1 and answer <= 12:
+            return True
+    elif step == 6:
+         if answer >= 1 and answer <= 4:
+            return True
+    elif step == 7:
+         if answer >= 1 and answer <= 4:
+            return True
+    elif step == 8:
+         #if answer >= 1 and answer <= 4:
+            return True   
+ 
+    return False
 
 @app.route('/', methods=["GET", "POST"])
 def webhook():
@@ -373,9 +391,7 @@ def webhook():
     if chat_step > 4 and chat_step < 8:
         parsed_input = parse_answer(user_input, chat_step)
         print(parsed_input)
-        if parsed_input < 1 or parsed_input > 4:
-            #正しく選択して
-            valid_select = False
+        valid_select = checkValidAnswer(chat_step -1, parsed_input)
 
 
     if valid_select == False:
@@ -421,8 +437,8 @@ def webhook():
                 if sel >= 1 and sel <= 4:
                     conds = conds + property_type_conds[sel]
             elif step == 8:
-                sels = item['parsed'].split(',')
-                print(sels)
+                #sels = item['parsed'].split(',')
+                print(item['parsed'])
                 #sel = item['parsed']
 
         dbname = './rooms.db'
@@ -519,5 +535,5 @@ def webhook():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=True, host="0.0.0.0", port=6001)
 

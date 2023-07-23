@@ -49,7 +49,12 @@ questions = ['次はかならず名前を聞く',
             '次はかならず以下の間取りの希望を質問してください。以下の選択肢を提示する。1:ワンルーム、2:1K、3:1DK、4:1LDK、5:2K、6:2DK、7:2LDK、8:3K、9:3DK、10:3LDK、11:その他、12:決めていない',
             '次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
             '次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
-            '次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。'
+            '次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
+            'それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない',
+            'それからもう一度条件を聞く。次はかならず以下の間取りの希望を質問してください。以下の選択肢を提示する。1:ワンルーム、2:1K、3:1DK、4:1LDK、5:2K、6:2DK、7:2LDK、8:3K、9:3DK、10:3LDK、11:その他、12:決めていない',
+            'それからもう一度条件を聞く。次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
+            'それからもう一度条件を聞く。次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
+            'それからもう一度条件を聞く。次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
             ]
 
 #会話の進捗ステータス
@@ -203,7 +208,7 @@ def get_message_history(user_id, role='all', valid=True, limit=10):
         )
     return response['Items']
 
-def save_message_to_history(user_id, message, timestamp, role):
+def save_message_to_history(user_id, message, timestamp, role, step):
     print(f"Saving message to history: {message}")
     table.put_item(
         Item={
@@ -211,6 +216,7 @@ def save_message_to_history(user_id, message, timestamp, role):
             'timestamp': timestamp,
             'message': message,
             'role': role,
+            'step': step,
             'valid': True
         }
     )
@@ -246,17 +252,21 @@ def delete_step_history(user_id):
 def save_user_answers(user_id, step, user_input, user_answer, timestamp):
     print(f"Saving user answer to history: {user_answer}")
     # 既に同じステップの回答があった場合は前の回答を無効に
-    # response = answer_table.update_item(                                       
-    #     Key={
-    #         'user_id': user_id,
-    #         'step': step
-    #     },
-    #     UpdateExpression="set valid= :r",
-    #     ExpressionAttributeValues={
-    #         ':r': False
-    #     },
-    #     ReturnValues="UPDATED_NEW"
-    # )
+    response = answer_table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('step').eq(step),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = answer_table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
     answer_table.put_item(
         Item={
             'user_id': user_id,
@@ -272,6 +282,7 @@ def get_answer_history(user_id):
     print(f"Get user answers from history: {user_id}")
     response = answer_table.query(
         KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
         ScanIndexForward=False
     )
     return response['Items']
@@ -302,9 +313,11 @@ def parse_answer(answer, step):
     return int(select_num)
 
 def checkValidAnswer(step, answer):
+    if step > 8:
+        step = step - 5
     print('checkValidAnswer: answer_step='+str(step))
     print('checkValidAnswer: answer =' + str(answer))
-    if step == 4:
+    if step == 4 :
         if answer >= 1 and answer <= 5:
             return True
     elif step == 5:
@@ -318,7 +331,7 @@ def checkValidAnswer(step, answer):
             return True
     elif step == 8:
          #if answer >= 1 and answer <= 4:
-            return True   
+            return True
  
     return False
 
@@ -398,7 +411,10 @@ def webhook():
     else:
         chat_step = int(step_history[0]['step'])
 
-    answer_step = chat_step -1
+    if chat_step > 9:
+        answer_step = chat_step - 6
+    else:
+        answer_step = chat_step - 1
 
     parsed_input = 0
     valid_select = True
@@ -421,7 +437,7 @@ def webhook():
     if chat_step <= 8:
         print("qustion step="+str(chat_step))
         prompt.append({"role": "system", "content": questions[chat_step]})
-    else:
+    elif chat_step > 8 and chat_step <= 14:
         #DB検索
         conds = " WHERE 1=1 "
         answer_historys = get_answer_history(user_id)
@@ -471,22 +487,29 @@ def webhook():
             print(row)
             items = items + get_item_detail(row)
             num = num + 1
-            if num > 3:
+            if num > 2:
                 break
 
         ret_msg = ""
         if num == 0:
-            ret_msg = "対象物件は見つからない。再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
+            ret_msg = "対象物件は見つからない。" #再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         elif num > 1:
-            ret_msg = "条件にあう物件は複数あることを伝える。それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
+            ret_msg = "条件にあう物件は複数あることを伝える。" #それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         else:
             # 物件詳細を提示
             ret_msg = items
 
-        prompt.append({"role": "system", "content": ret_msg})
         if num != 1:
-            chat_step = 4
+            ret_msg = ret_msg + questions[chat_step]
+            if chat_step == 13:
+                chat_step = 8
+        else:
+            chat_step = 14
         cur.close()
+        prompt.append({"role": "system", "content": ret_msg})
+
+    else:
+        pass    
     #prompt.append({"role": "assistant", "content": response_body})
     #prompt.append({"role": "user", "content": "内容をAIちんさくん風に話してください。"})
     
@@ -536,14 +559,14 @@ def webhook():
             if answer_step == 8:
                 parsed_input = ",".join([str(_) for _ in parsed_input])
             save_user_answers(user_id, answer_step, user_input, str(parsed_input), send_timestamp)
-        save_message_to_history(user_id, user_message_obj, send_timestamp, 'user')
+        save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
     except Exception as e:
         print(f"Error saving user message: {e}")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
         return
     # AI発言の保存
     try:
-        save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant')
+        save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant', chat_step)
     except Exception as e:
         print(f"Error saving AI message: {e}")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))

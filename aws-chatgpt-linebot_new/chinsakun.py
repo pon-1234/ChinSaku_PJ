@@ -210,6 +210,25 @@ def get_message_history(user_id, role='all', valid=True, limit=10):
 
 def save_message_to_history(user_id, message, timestamp, role, step):
     print(f"Saving message to history: {message}")
+    # 既に同じステップの回答があった場合は前の質問文と回答を無効に
+    link_step = step
+    if step > 8:
+        link_step = step - 5
+        response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_id),
+            FilterExpression=Attr('step').eq(step) | Attr('step').eq(link_step),
+            ScanIndexForward=False
+        )
+        items = response['Items']
+        for item in items:
+            response = table.update_item(
+                Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+                UpdateExpression="set valid= :r",
+                ExpressionAttributeValues={
+                    ':r': False
+                },
+                ReturnValues="UPDATED_NEW"
+            )
     table.put_item(
         Item={
             'user_id': user_id,
@@ -494,7 +513,7 @@ def webhook():
         if num == 0:
             ret_msg = "対象物件は見つからない。" #再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         elif num > 1:
-            ret_msg = "条件にあう物件は複数あることを伝える。" #それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
+            ret_msg = "条件にあう物件は複数あることを伝える。以下の物件の概要を提示する。" + items #それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         else:
             # 物件詳細を提示
             ret_msg = items

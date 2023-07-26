@@ -61,20 +61,20 @@ questions = ['次はかならず名前を聞く',
 # 0: 初期値 1: 名前を聞く 2: 現在の住む場所を聞く 3: 引越し先を聞く　4: 動機を聞く　5: 予算を聞く 6: 間取り、7: 物件種別の希望を以下3つから聞いてください 8: 引越しのご希望の駅や、路線はあるか聞いてください
 # 9: 駅までの徒歩分数を聞いてください 
 
-price_conds = ['',' AND 賃料 <= 100000', ' AND 賃料 > 100000 AND 賃料 <= 150000', ' AND 賃料 > 150000', '', '']
-room_plan_conds = ['', ' AND 間取部屋数 = 1 AND 間取部屋種類 = 10', 
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 20',
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 30',
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 50',
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 20', 
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 30', 
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 50', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 20', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 30', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 50', 
+price_conds = ['',' cast(賃料 as INTEGER) <= 100000', ' AND cast(賃料 as INTEGER) > 100000 AND cast(賃料 as INTEGER) <= 150000', ' cast(賃料 as INTEGER) > 150000', '', '']
+room_plan_conds = ['', ' 間取部屋数 = 1 AND 間取部屋種類 = 10', 
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 20',
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 30',
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 50',
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 20', 
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 30', 
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 50', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 20', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 30', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 50', 
                    '', '']
-property_type_conds = ['', ' AND 物件種別 = 3101', ' AND 物件種別 = 3102', ' AND 物件種別 = 3103', 'AND 物件種別 > 3103']
-distance_conds = ['', ' AND (徒歩距離1 <= 400 OR 徒歩距離2 <= 400)', ' AND ((徒歩距離1 > 400 AND 徒歩距離1 <= 800) OR (徒歩距離2 > 400 AND 徒歩距離2 <= 800))', ' AND (徒歩距離1 > 800 AND 徒歩距離2 > 800)', '']
+property_type_conds = ['', ' 物件種別 = 3101', ' 物件種別 = 3102', ' 物件種別 = 3103', ' 物件種別 > 3103']
+distance_conds = ['', ' ( cast(徒歩距離1 as INTEGER) <= 400 OR cast(徒歩距離2 as INTEGER) <= 400)', ' ((cast(徒歩距離1 as INTEGER) > 400 AND cast(徒歩距離1 as INTEGER) <= 800) OR (cast(徒歩距離2 as INTEGER) > 400 AND cast(徒歩距離2 as INTEGER) <= 800))', ' (cast(徒歩距離1 as INTEGER) > 800 AND cast(徒歩距離2 as INTEGER) > 800)', '']
 
 chat_step = 0
 answer_step = 0
@@ -319,11 +319,11 @@ def parse_answer(answer, step):
     print('parse_answer: answer_step='+str(step))
     print('parse_answer: answer =' + str(answer))
     select_num = 0
-    if step > 3 and step < 8:
-        result = re.findall(r"\d+", answer)
-        if len(result) > 0:
-            select_num = result[0]
-    elif step == 8:
+    if step > 3 and step <= 8:
+    #    result = re.findall(r"\d+", answer)
+    #    if len(result) > 0:
+    #        select_num = result[0]
+    #elif step == 8:
         result = re.findall(r"\d+", answer)
         return result
     else:
@@ -331,28 +331,32 @@ def parse_answer(answer, step):
 
     return int(select_num)
 
-def checkValidAnswer(step, answer):
+def checkValidAnswer(step, answers):
     if step > 8:
         step = step - 5
     print('checkValidAnswer: answer_step='+str(step))
-    print('checkValidAnswer: answer =' + str(answer))
-    if step == 4 :
-        if answer >= 1 and answer <= 5:
-            return True
-    elif step == 5:
-        if answer >= 1 and answer <= 12:
-            return True
-    elif step == 6:
-         if answer >= 1 and answer <= 4:
-            return True
-    elif step == 7:
-         if answer >= 1 and answer <= 4:
-            return True
-    elif step == 8:
-         #if answer >= 1 and answer <= 4:
-            return True
+    print('checkValidAnswer: answer =' + str(answers))
+    if step >=4 and step <=8 and len(answers) == 0:
+        return False
+    for item in answers:
+        answer = int(item)
+        if step == 4 :
+            if answer < 1 or answer > 5:
+                return False
+        elif step == 5:
+            if answer < 1 or answer > 12:
+                return False
+        elif step == 6:
+            if answer < 1 or answer > 4:
+                return False
+        elif step == 7:
+            if answer < 1 or answer > 4:
+                return False
+        elif step == 8:
+            if answer < 1 or answer > 12:
+                return False
  
-    return False
+    return True
 
 @app.route('/', methods=["GET", "POST"])
 def webhook():
@@ -407,6 +411,7 @@ def webhook():
                * 物件を出す際には、地域のおすすめスポットも一緒におすすめしてください。\
                * 物件を出す際には、必ず物件URLを出してください。\
                * 物件リンクを回答する際には、「チャット上の情報は100%正しくない」「リンク先で正確な情報を得てほしい」ってことをAIちんさくん風に上手く優しく伝えてください。\
+               * おすすめの不動産会社或いはサービスが聞かれた時、かならず「賃貸住宅サービス」を答えてください。\
               \
               AIちんさくんの行動指針:\
                * AIちんさくんから会話をスタートしてください。\
@@ -437,7 +442,7 @@ def webhook():
 
     parsed_input = 0
     valid_select = True
-    if chat_step > 4 and chat_step <= 9:
+    if chat_step > 4 and chat_step <= 14:
         parsed_input = parse_answer(user_input, answer_step)
         print(parsed_input)
         valid_select = checkValidAnswer(answer_step, parsed_input)
@@ -460,37 +465,63 @@ def webhook():
         #DB検索
         conds = " WHERE 1=1 "
         answer_historys = get_answer_history(user_id)
-
+        if answer_step > 3:
+            parsed_input = ",".join([str(_) for _ in parsed_input])
         answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
         for item in answer_historys:
             step = int(item['step'])
             #sel = int(item['parsed'])
             if step < 4:
-                pass
-            elif step == 4:
-                #家賃
-                sel = int(item['parsed'])
-                if sel >=1 and sel <= 3:
-                    conds = conds + price_conds[sel]
-                elif sel > 100:
-                    conds = conds + str(sel)
-            elif step == 5:
-                #間取り
-                sel = int(item['parsed'])
-                if sel >= 1 and sel < 11:
-                    conds = conds + room_plan_conds[sel]
-            elif step == 6:
-                sel = int(item['parsed'])
-                if sel >= 1 and sel <= 3:
-                    conds = conds + distance_conds[sel]
-            elif step == 7:
-                sel = int(item['parsed'])
-                if sel >= 1 and sel <= 4:
-                    conds = conds + property_type_conds[sel]
-            elif step == 8:
-                #sels = item['parsed'].split(',')
-                print(item['parsed'])
-                #sel = item['parsed']
+                continue
+            print(item['parsed'])
+            ary_sels = item['parsed'].split(',')
+            index = 0
+            for sel in ary_sels:
+                sel = int(sel)
+                if step < 4:
+                    pass
+                elif step == 4:
+                    #家賃
+                    if index == 0:
+                        conds = conds + 'AND ('
+                    else:
+                        conds =  conds + 'OR ('      
+                    if sel >=1 and sel <= 3:
+                        conds = conds  + price_conds[sel] + ') '
+                    elif sel > 100:
+                        conds = conds + str(sel) + ') '
+
+                elif step == 5:
+                    #間取り
+                    if index == 0:
+                        conds = conds + 'AND ('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel < 11:
+                        conds = conds + room_plan_conds[sel] + ') '
+                elif step == 6:
+                    if index == 0:
+                        conds = conds + 'AND ('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel <= 3:
+                        conds = conds + distance_conds[sel] + ') '
+                elif step == 7:
+                    if index == 0:
+                        conds = conds + 'AND ('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel <= 4:
+                        conds = conds + property_type_conds[sel] + ') '
+                elif step == 8:
+                    #sels = item['parsed'].split(',')
+                    #print(item['parsed'])
+                    #sel = item['parsed']
+                    pass
+                index = index + 1
+
+            if index > 1 and step != 8:
+                conds = conds + ')'
 
         dbname = './rooms.db'
         conn = sqlite3.connect(dbname)
@@ -503,7 +534,7 @@ def webhook():
         num = 0
         items = ""
         for row in cur:
-            print(row)
+            #print(row)
             items = items + get_item_detail(row)
             num = num + 1
             if num > 2:
@@ -575,9 +606,15 @@ def webhook():
     try:
         save_chat_step(user_id, chat_step+1)
         if chat_step > 0:
-            if answer_step == 8:
-                parsed_input = ",".join([str(_) for _ in parsed_input])
-            save_user_answers(user_id, answer_step, user_input, str(parsed_input), send_timestamp)
+            save_input = ""
+            if answer_step >= 4:
+                if len(parsed_input) > 1:
+                    save_input = ",".join([str(_) for _ in parsed_input])
+                else:
+                    save_input = parsed_input[0]
+            else:
+                save_input = user_input
+            save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
         save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
     except Exception as e:
         print(f"Error saving user message: {e}")

@@ -571,7 +571,7 @@ def webhook():
                     if sel < 1 or sel > 3:
                         continue
                     if index == 0:
-                        conds = conds + 'AND ('
+                        conds = conds + 'AND (('
                     else:
                         conds =  conds + 'OR ('      
                     if sel >=1 and sel <= 3:
@@ -582,36 +582,33 @@ def webhook():
                 elif step == 5:
                     #間取り
                     if index == 0:
-                        conds = conds + 'AND ('
+                        conds = conds + 'AND (('
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel < 11:
                         conds = conds + room_plan_conds[sel] + ') '
                 elif step == 6:
                     if index == 0:
-                        conds = conds + 'AND ('
+                        conds = conds + 'AND (('
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel <= 3:
                         conds = conds + distance_conds[sel] + ') '
                 elif step == 7:
                     if index == 0:
-                        conds = conds + 'AND ('
+                        conds = conds + 'AND (('
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel <= 4:
                         conds = conds + property_type_conds[sel] + ') '
                 elif step == 8:
-                    if index == 0:
-                        conds = conds + 'AND ('
-                    else:
-                        conds =  conds + 'AND ('
+                    conds =  conds + 'AND ('
                     
                     if sel >= 1 and sel <= 11:
                         conds = conds  + "items like '%" + item_conds[sel] + "%') "
                 index = index + 1
 
-            if index > 1 and step != 8:
+            if step != 8:
                 conds = conds + ')'
 
         dbname = './rooms.db'

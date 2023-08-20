@@ -61,7 +61,8 @@ questions = ['次はかならず名前を聞く',
 # 0: 初期値 1: 名前を聞く 2: 現在の住む場所を聞く 3: 引越し先を聞く　4: 動機を聞く　5: 予算を聞く 6: 間取り、7: 物件種別の希望を以下3つから聞いてください 8: 引越しのご希望の駅や、路線はあるか聞いてください
 # 9: 駅までの徒歩分数を聞いてください 
 
-price_conds = ['',' cast(賃料 as INTEGER) <= 100000', ' AND cast(賃料 as INTEGER) > 100000 AND cast(賃料 as INTEGER) <= 150000', ' cast(賃料 as INTEGER) > 150000', '', '']
+place_cond = ' Address like '
+price_conds = ['',' cast(賃料 as INTEGER) <= 100000', ' cast(賃料 as INTEGER) > 100000 AND cast(賃料 as INTEGER) <= 150000', ' cast(賃料 as INTEGER) > 150000', '', '']
 room_plan_conds = ['', ' 間取部屋数 = 1 AND 間取部屋種類 = 10', 
                    ' 間取部屋数 = 1 AND 間取部屋種類 = 20',
                    ' 間取部屋数 = 1 AND 間取部屋種類 = 30',
@@ -75,6 +76,8 @@ room_plan_conds = ['', ' 間取部屋数 = 1 AND 間取部屋種類 = 10',
                    '', '']
 property_type_conds = ['', ' 物件種別 = 3101', ' 物件種別 = 3102', ' 物件種別 = 3103', ' 物件種別 > 3103']
 distance_conds = ['', ' ( cast(徒歩距離1 as INTEGER) <= 400 OR cast(徒歩距離2 as INTEGER) <= 400)', ' ((cast(徒歩距離1 as INTEGER) > 400 AND cast(徒歩距離1 as INTEGER) <= 800) OR (cast(徒歩距離2 as INTEGER) > 400 AND cast(徒歩距離2 as INTEGER) <= 800))', ' (cast(徒歩距離1 as INTEGER) > 800 AND cast(徒歩距離2 as INTEGER) > 800)', '']
+
+item_conds = ['43101', '20501', '25701', '', '10901', '23402', '25601', '22301', '22401', '43001', '23201', '23101','' ]
 
 chat_step = 0
 answer_step = 0
@@ -128,64 +131,65 @@ app = Flask(__name__)
 
 def get_item_detail(row):
     #print (row)
-    outdata = "以下は物件番号" +str(row[417])+"の詳細情報です。\n"
-    outdata += "・" + names[36] + ': ' + row[417] + '\n'
-    outdata += "・" + names[0] + ': ' + str(row[1]) + '\n'
-    outdata += "・" + names[1] + ': ' + status_name[int(row[6])] + '\n'
-    outdata += "・" + names[2] + ': ' + type_name[int(row[7])] + '\n'
-    outdata += "・" + names[3] + ': ' + row[10] + '\n'
-    outdata += "・" + names[4] + ': ' + row[15] + '\n'
-    outdata += "・" + names[5] + ': ' + row[16] + '\n'
+    outdata = "以下は物件番号" +str(row[17])+"の詳細情報です。\n"
+    outdata += "・" + names[36] + ': ' + row[17] + '\n'
+    print(outdata)
+    #outdata += "・" + names[0] + ': ' + str(row[1]) + '\n'
+    outdata += "・" + names[1] + ': ' + status_name[int(row[5])] + '\n'
+    outdata += "・" + names[2] + ': ' + type_name[int(row[6])] + '\n'
+    outdata += "・" + names[3] + ': ' + row[9] + '\n'
+    outdata += "・" + names[4] + ': ' + row[14] + '\n'
+    outdata += "・" + names[5] + ': ' + row[15] + '\n'
     place = ""
-    if row[18] is not None:
-        place = row[18]
+    if row[416] is not None:
+        place = row[416]
     outdata += "・" + names[6] + ': ' + place + '\n'
     addr = ""
-    if row[19] is not None:
-        addr = row[19]    
+    if row[18] is not None:
+        addr = row[18]    
     outdata += "・" + names[7] + ': ' + addr + '\n'
     addr2 = ""
-    if row[20] is not None:
-        addr2 = row[20]
+    if row[19] is not None:
+        addr2 = row[19]
     outdata += "・" + names[8] + ': ' + addr2 + '\n'
-    outdata += "・" + names[9] + ': ' + row[21] + '\n'
-    outdata += "・" + names[20] + ': ' + building_name[int(row[71])] + '\n'
-    outdata += "・" + names[21] + ': ' + row[73] + '平米\n'
-    outdata += "・" + names[22] + ': ' + new_flag_name[int(row[80])] + '\n'
-    outdata += "・" + names[23] + ': ' + row[88] + '\n'
-    outdata += "・" + names[24] + ': ' + row[88] + room_plan_name[int(row[89])] + '\n'
+    outdata += "・" + names[9] + ': ' + row[20] + '\n'
+    outdata += "・" + names[20] + ': ' + building_name[int(row[70])] + '\n'
+    outdata += "・" + names[21] + ': ' + row[72] + '平米\n'
+    outdata += "・" + names[22] + ': ' + new_flag_name[int(row[79])] + '\n'
+    outdata += "・" + names[23] + ': ' + row[87] + '\n'
+    outdata += "・" + names[24] + ': ' + row[87] + room_plan_name[int(row[88])] + '\n'
 
     for i in range(10):
 
         if row[89+i*4] is None or row[89+i*4].strip() == '':
             #print(i)
             continue
-        outdata += '・間取' + str(i+1) +'の種類: ' + room_type_name[int(row[90+i*4])] + '\n'
-        outdata += '・間取' + str(i+1) +'の畳数: ' + str(row[91+i*4]) + '畳\n'
-        outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[92+i*4]) + '階\n'
-        outdata += '・間取' + str(i+1) +'の室数: ' + str(row[93+i*4]) + '室\n'
+        outdata += '・間取' + str(i+1) +'の種類: ' + room_type_name[int(row[89+i*4])] + '\n'
+        outdata += '・間取' + str(i+1) +'の畳数: ' + str(row[90+i*4]) + '畳\n'
+        outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[91+i*4]) + '階\n'
+        outdata += '・間取' + str(i+1) +'の室数: ' + str(row[92+i*4]) + '室\n'
 
     feature = ""
-    if row[131] is not None:
-        feature = row[131]
-    outdata += "・" + names[28] + ': ' + feature + '\n'
-    outdata += "・" + names[29] + ': ' + row[139] + '円\n'
+    if row[130] is not None:
+        feature = row[130]
+    outdata += "・" + names[27] + ': ' + feature + '\n'
+    outdata += "・" + names[28] + ': ' + row[138] + '円\n'
     key_money_unit = 'ヶ月'
     deposit_money_unit = 'ヶ月'
-    if (row[146] is not None and int(row[146]) > 100):
+    if (row[145] is not None and int(row[145]) > 100):
         key_money_unit = '円'
-    outdata += names[30] + ': ' + row[147] + key_money_unit + '\n'
-    if (row[148] is not None and int(row[148]) > 100):
+    outdata += names[29] + ': ' + row[146] + key_money_unit + '\n'
+    if (row[147] is not None and int(row[147]) > 100):
         deposit_money_unit = '円'
-    outdata += "・" + names[31] + ': ' + row[149] + deposit_money_unit + '\n'
+    outdata += "・" + names[30] + ': ' + row[148] + deposit_money_unit + '\n'
 
-    outdata += "・" + names[32] + ': ' + parking_type_name[int(row[180])] + '\n'
+    outdata += "・" + names[31] + ': ' + parking_type_name[int(row[179])] + '\n'
 
+    outdata += "・" + names[32] + ': ' + ok_name[int(row[410])] + '\n'
     outdata += "・" + names[33] + ': ' + ok_name[int(row[411])] + '\n'
     outdata += "・" + names[34] + ': ' + ok_name[int(row[412])] + '\n'
-    outdata += "・" + names[35] + ': ' + ok_name[int(row[413])] + '\n'
     
-    outdata += "・" + "物件リンク" + ': ' + 'https://www.cjs.ne.jp/chintai/detail/' + str(row[417]) + ".html\n"
+    outdata += "・" + "物件リンク" + ': ' + 'https://www.cjs.ne.jp/chintai/detail/' + str(row[17]).strip() + ".html\n"
 
     return outdata
 
@@ -358,6 +362,44 @@ def checkValidAnswer(step, answers):
  
     return True
 
+def reset_conversation(user_id):
+    print(f"reset user answers")
+    # 有効な回答を無効に
+    response = answer_table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = answer_table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+    # 有効な会話履歴を無効に
+    response = table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+    save_chat_step(user_id, 0)
+
 @app.route('/', methods=["GET", "POST"])
 def webhook():
     # Parse msg from LINE conversation request]
@@ -427,6 +469,41 @@ def webhook():
     
     user_message_obj = {"role": "user", "content": user_input}
     print(f"User message: {user_input}")
+
+    # 終了 で会話をリセット
+    if '終了' in user_input or '終わり' in user_input:
+        prompt.append({"role": "user", "content": user_input})
+        prompt.append({"role": "system", "content": "終わりの挨拶を言う。"})
+        reset_conversation(user_id)
+        # GPT3
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo-16k",
+                messages=prompt
+            )
+        except:
+            return {
+                'statusCode': 502,
+                'body': json.dumps("Invalid signature. Please check your channel access token/channel secret.")
+        }
+        gpt3_response = response.choices[0]['message']['content']
+        print('gpt3_response: ', gpt3_response)
+        try:
+            line_bot_api.reply_message(
+                    event['events'][0]['replyToken'],
+                    TextSendMessage(text=gpt3_response)
+            )
+        except:
+            return {
+                'statusCode': 502,
+                'body': json.dumps("Invalid signature. Please check your channel access token/channel secret.")
+            }
+        
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": 'ok'})
+        }
+
     # step履歴の取得
     step_history = get_chat_status(user_id)
     print(step_history)
@@ -468,14 +545,21 @@ def webhook():
         if answer_step > 3:
             parsed_input = ",".join([str(_) for _ in parsed_input])
         answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
+        print(answer_historys)
         for item in answer_historys:
             step = int(item['step'])
+            print('step=' + str(step))
             #sel = int(item['parsed'])
-            if step < 4:
-                continue
             print(item['parsed'])
+            if step == 2:
+                conds = conds + "AND (" + place_cond + "'%" + item['parsed'] + "%' ) "
+                continue
+            elif step < 4:
+                continue
+            
             ary_sels = item['parsed'].split(',')
             index = 0
+            print(ary_sels)
             for sel in ary_sels:
                 sel = int(sel)
                 if step < 4:
@@ -514,13 +598,19 @@ def webhook():
                     if sel >= 1 and sel <= 4:
                         conds = conds + property_type_conds[sel] + ') '
                 elif step == 8:
-                    #sels = item['parsed'].split(',')
+                    if index == 0:
+                        conds = conds + 'AND ('
+                    else:
+                        conds =  conds + 'AND ('
+                    
+                    if sel >= 1 and sel <= 11:
+                        conds = conds  + "items like '%" + item_conds[sel] + "%') "
                     #print(item['parsed'])
                     #sel = item['parsed']
                     pass
                 index = index + 1
 
-            if index > 1 and step != 8:
+            if index > 1:
                 conds = conds + ')'
 
         dbname = './rooms.db'

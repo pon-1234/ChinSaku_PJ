@@ -599,15 +599,12 @@ def webhook():
                         conds = conds + property_type_conds[sel] + ') '
                 elif step == 8:
                     if index == 0:
-                        conds = conds + 'AND ('
+                        conds = conds + 'AND (('
                     else:
                         conds =  conds + 'AND ('
                     
                     if sel >= 1 and sel <= 11:
                         conds = conds  + "items like '%" + item_conds[sel] + "%') "
-                    #print(item['parsed'])
-                    #sel = item['parsed']
-                    pass
                 index = index + 1
 
             if index > 1:

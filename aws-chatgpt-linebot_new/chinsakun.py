@@ -568,6 +568,8 @@ def webhook():
                     pass
                 elif step == 4:
                     #家賃
+                    if sel < 1 or sel > 3:
+                        continue
                     if index == 0:
                         conds = conds + 'AND ('
                     else:
@@ -601,7 +603,7 @@ def webhook():
                         conds = conds + property_type_conds[sel] + ') '
                 elif step == 8:
                     if index == 0:
-                        conds = conds + 'AND (('
+                        conds = conds + 'AND ('
                     else:
                         conds =  conds + 'AND ('
                     
@@ -609,7 +611,7 @@ def webhook():
                         conds = conds  + "items like '%" + item_conds[sel] + "%') "
                 index = index + 1
 
-            if index > 1:
+            if index > 1 and step != 8:
                 conds = conds + ')'
 
         dbname = './rooms.db'

@@ -561,6 +561,8 @@ def webhook():
             index = 0
             print(ary_sels)
             for sel in ary_sels:
+                if sel == '':
+                    continue
                 sel = int(sel)
                 if step < 4:
                     pass

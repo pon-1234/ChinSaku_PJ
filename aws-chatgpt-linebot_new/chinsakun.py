@@ -581,6 +581,8 @@ def webhook():
 
                 elif step == 5:
                     #間取り
+                    if sel < 1 or sel > 10:
+                        continue
                     if index == 0:
                         conds = conds + 'AND (('
                     else:
@@ -588,6 +590,8 @@ def webhook():
                     if sel >= 1 and sel < 11:
                         conds = conds + room_plan_conds[sel] + ') '
                 elif step == 6:
+                    if sel < 1 or sel > 3:
+                        continue
                     if index == 0:
                         conds = conds + 'AND (('
                     else:
@@ -595,6 +599,8 @@ def webhook():
                     if sel >= 1 and sel <= 3:
                         conds = conds + distance_conds[sel] + ') '
                 elif step == 7:
+                    if sel < 1 or sel > 4:
+                        continue
                     if index == 0:
                         conds = conds + 'AND (('
                     else:
@@ -602,6 +608,8 @@ def webhook():
                     if sel >= 1 and sel <= 4:
                         conds = conds + property_type_conds[sel] + ') '
                 elif step == 8:
+                    if sel < 1 or sel > 11:
+                        continue
                     conds =  conds + 'AND ('
                     
                     if sel >= 1 and sel <= 11:

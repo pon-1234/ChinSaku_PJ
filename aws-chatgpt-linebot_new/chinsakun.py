@@ -1,8 +1,8 @@
 import os
 import json
 os.environ["openAI_API_token"] = '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'
-os.environ["Channel_access_token"] = 'OEdJ0lMVNxwaCTmnCA+WorNaJmcRSA7ugqIU0ym1HMGuX8eGk0Zo8+Y+8MnXcCFUAmBNhXHoDlehyfLs0RlHb8Gh+EkW6jJxIOdK3tmy1z1h50LKqSy8iBYQY1XbbOyt65Q+tUAJXy8LT9fhu6xbigdB04t89/1O/w1cDnyilFU='
-os.environ["Channel_secret"] = '6306470d029da2ac9d9d0f9a6a30146a'
+os.environ["Channel_access_token"] = 'sddKWFGNiB1evjm3Tq83Bfh4OEqZXdzaLTzd4CMY5C3gkOG3PcgXZRlFXCjZxxv1hdxv5Cj3yKRYyA4Ltb8aC9hHj2ErOl5/HaXe0xVgQx53akhBE/no7mCxwQtIHohximH58+6jqCxYi77JxvGpSAdB04t89/1O/w1cDnyilFU='
+os.environ["Channel_secret"] = '81b795416d4b1a254ba867b9eeaa9b1e'
 import openai
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
@@ -49,29 +49,38 @@ questions = ['次はかならず名前を聞く',
             '次はかならず以下の間取りの希望を質問してください。以下の選択肢を提示する。1:ワンルーム、2:1K、3:1DK、4:1LDK、5:2K、6:2DK、7:2LDK、8:3K、9:3DK、10:3LDK、11:その他、12:決めていない',
             '次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
             '次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
-            '次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。'
+            '次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
+            'それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない',
+            'それからもう一度条件を聞く。次はかならず以下の間取りの希望を質問してください。以下の選択肢を提示する。1:ワンルーム、2:1K、3:1DK、4:1LDK、5:2K、6:2DK、7:2LDK、8:3K、9:3DK、10:3LDK、11:その他、12:決めていない',
+            'それからもう一度条件を聞く。次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
+            'それからもう一度条件を聞く。次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
+            'それからもう一度条件を聞く。次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
             ]
 
 #会話の進捗ステータス
 # 0: 初期値 1: 名前を聞く 2: 現在の住む場所を聞く 3: 引越し先を聞く　4: 動機を聞く　5: 予算を聞く 6: 間取り、7: 物件種別の希望を以下3つから聞いてください 8: 引越しのご希望の駅や、路線はあるか聞いてください
 # 9: 駅までの徒歩分数を聞いてください 
 
-price_conds = ['',' AND 賃料 <= 100000', ' AND 賃料 > 100000 AND 賃料 <= 150000', ' AND 賃料 > 150000', '', '']
-room_plan_conds = ['', ' AND 間取部屋数 = 1 AND 間取部屋種類 = 10', 
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 20',
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 30',
-                   ' AND 間取部屋数 = 1 AND 間取部屋種類 = 50',
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 20', 
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 30', 
-                   ' AND 間取部屋数 = 2 AND 間取部屋種類 = 50', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 20', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 30', 
-                   ' AND 間取部屋数 = 3 AND 間取部屋種類 = 50', 
+place_cond = ' Address like '
+price_conds = ['',' cast(賃料 as INTEGER) <= 100000', ' cast(賃料 as INTEGER) > 100000 AND cast(賃料 as INTEGER) <= 150000', ' cast(賃料 as INTEGER) > 150000', '', '']
+room_plan_conds = ['', ' 間取部屋数 = 1 AND 間取部屋種類 = 10', 
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 20',
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 30',
+                   ' 間取部屋数 = 1 AND 間取部屋種類 = 50',
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 20', 
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 30', 
+                   ' 間取部屋数 = 2 AND 間取部屋種類 = 50', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 20', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 30', 
+                   ' 間取部屋数 = 3 AND 間取部屋種類 = 50', 
                    '', '']
-property_type_conds = ['', ' AND 物件種別 = 3101', ' AND 物件種別 = 3102', ' AND 物件種別 = 3103', 'AND 物件種別 > 3103']
-distance_conds = ['', ' AND (徒歩距離1 <= 400 OR 徒歩距離2 <= 400)', ' AND ((徒歩距離1 > 400 AND 徒歩距離1 <= 800) OR (徒歩距離2 > 400 AND 徒歩距離2 <= 800))', ' AND (徒歩距離1 > 800 AND 徒歩距離2 > 800)', '']
+property_type_conds = ['', ' 物件種別 = 3101', ' 物件種別 = 3102', ' 物件種別 = 3103', ' 物件種別 > 3103']
+distance_conds = ['', ' ( cast(徒歩距離1 as INTEGER) <= 400 OR cast(徒歩距離2 as INTEGER) <= 400)', ' ((cast(徒歩距離1 as INTEGER) > 400 AND cast(徒歩距離1 as INTEGER) <= 800) OR (cast(徒歩距離2 as INTEGER) > 400 AND cast(徒歩距離2 as INTEGER) <= 800))', ' (cast(徒歩距離1 as INTEGER) > 800 AND cast(徒歩距離2 as INTEGER) > 800)', '']
+
+item_conds = ['43101', '20501', '25701', '', '10901', '23402', '25601', '22301', '22401', '43001', '23201', '23101','' ]
 
 chat_step = 0
+answer_step = 0
 
 #予算の選択肢
 rental_fees =['10万円以下','10万円〜15万円', '15万円以上', 'その他']
@@ -103,15 +112,15 @@ names = ['自社管理物件番号', '状態', '物件種別', '建物名或い�
 
 dynamodb = boto3.resource('dynamodb')
 #会話保存テーブル
-table_name = 'chat-conversations-prod'
+table_name = 'chat-conversations'
 table = dynamodb.Table(table_name)
 
 #会話進捗状況テーブル
-status_table_name = 'chat-status-prod'
+status_table_name = 'chat-status'
 status_table = dynamodb.Table(status_table_name)
 
 #ユーザ回答保存テーブル
-answer_table_name = 'chat-answers-prod'
+answer_table_name = 'chat-answers'
 answer_table = dynamodb.Table(answer_table_name)
 
 #物件DB
@@ -122,58 +131,65 @@ app = Flask(__name__)
 
 def get_item_detail(row):
     #print (row)
-    outdata = "以下は物件番号" +str(row[417])+"の詳細情報です。\n"
-    outdata += "・" + names[36] + ': ' + row[417] + '\n'
-    outdata += "・" + names[0] + ': ' + str(row[1]) + '\n'
-    outdata += "・" + names[1] + ': ' + status_name[int(row[6])] + '\n'
-    outdata += "・" + names[2] + ': ' + type_name[int(row[7])] + '\n'
-    outdata += "・" + names[3] + ': ' + row[10] + '\n'
-    outdata += "・" + names[4] + ': ' + row[15] + '\n'
-    outdata += "・" + names[5] + ': ' + row[16] + '\n'
+    outdata = "以下は物件番号" +str(row[17])+"の詳細情報です。\n"
+    outdata += "・" + names[36] + ': ' + row[17] + '\n'
+    print(outdata)
+    #outdata += "・" + names[0] + ': ' + str(row[1]) + '\n'
+    outdata += "・" + names[1] + ': ' + status_name[int(row[5])] + '\n'
+    outdata += "・" + names[2] + ': ' + type_name[int(row[6])] + '\n'
+    outdata += "・" + names[3] + ': ' + row[9] + '\n'
+    outdata += "・" + names[4] + ': ' + row[14] + '\n'
+    outdata += "・" + names[5] + ': ' + row[15] + '\n'
     place = ""
-    if row[18] is not None:
-        place = row[18]
+    if row[416] is not None:
+        place = row[416]
     outdata += "・" + names[6] + ': ' + place + '\n'
-    outdata += "・" + names[7] + ': ' + row[19] + '\n'
+    addr = ""
+    if row[18] is not None:
+        addr = row[18]    
+    outdata += "・" + names[7] + ': ' + addr + '\n'
     addr2 = ""
-    if row[20] is not None:
-        addr2 = row[20]
+    if row[19] is not None:
+        addr2 = row[19]
     outdata += "・" + names[8] + ': ' + addr2 + '\n'
-    outdata += "・" + names[9] + ': ' + row[21] + '\n'
-    outdata += "・" + names[20] + ': ' + building_name[int(row[71])] + '\n'
-    outdata += "・" + names[21] + ': ' + row[73] + '平米\n'
-    outdata += "・" + names[22] + ': ' + new_flag_name[int(row[80])] + '\n'
-    outdata += "・" + names[23] + ': ' + row[88] + '\n'
-    outdata += "・" + names[24] + ': ' + row[88] + room_plan_name[int(row[89])] + '\n'
+    outdata += "・" + names[9] + ': ' + row[20] + '\n'
+    outdata += "・" + names[20] + ': ' + building_name[int(row[70])] + '\n'
+    outdata += "・" + names[21] + ': ' + row[72] + '平米\n'
+    outdata += "・" + names[22] + ': ' + new_flag_name[int(row[79])] + '\n'
+    outdata += "・" + names[23] + ': ' + row[87] + '\n'
+    outdata += "・" + names[24] + ': ' + row[87] + room_plan_name[int(row[88])] + '\n'
 
     for i in range(10):
 
         if row[89+i*4] is None or row[89+i*4].strip() == '':
             #print(i)
             continue
-        outdata += '・間取' + str(i+1) +'の種類: ' + room_type_name[int(row[90+i*4])] + '\n'
-        outdata += '・間取' + str(i+1) +'の畳数: ' + str(row[91+i*4]) + '畳\n'
-        outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[92+i*4]) + '階\n'
-        outdata += '・間取' + str(i+1) +'の室数: ' + str(row[93+i*4]) + '室\n'
+        outdata += '・間取' + str(i+1) +'の種類: ' + room_type_name[int(row[89+i*4])] + '\n'
+        outdata += '・間取' + str(i+1) +'の畳数: ' + str(row[90+i*4]) + '畳\n'
+        outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[91+i*4]) + '階\n'
+        outdata += '・間取' + str(i+1) +'の室数: ' + str(row[92+i*4]) + '室\n'
 
-    outdata += "・" + names[28] + ': ' + row[131] + '\n'
-    outdata += "・" + names[29] + ': ' + row[139] + '円\n'
+    feature = ""
+    if row[130] is not None:
+        feature = row[130]
+    outdata += "・" + names[27] + ': ' + feature + '\n'
+    outdata += "・" + names[28] + ': ' + row[138] + '円\n'
     key_money_unit = 'ヶ月'
     deposit_money_unit = 'ヶ月'
-    if (row[146] is not None and int(row[146]) > 100):
+    if (row[145] is not None and int(row[145]) > 100):
         key_money_unit = '円'
-    outdata += names[30] + ': ' + row[147] + key_money_unit + '\n'
-    if (row[148] is not None and int(row[148]) > 100):
+    outdata += names[29] + ': ' + row[146] + key_money_unit + '\n'
+    if (row[147] is not None and int(row[147]) > 100):
         deposit_money_unit = '円'
-    outdata += "・" + names[31] + ': ' + row[149] + deposit_money_unit + '\n'
+    outdata += "・" + names[30] + ': ' + row[148] + deposit_money_unit + '\n'
 
-    outdata += "・" + names[32] + ': ' + parking_type_name[int(row[180])] + '\n'
+    outdata += "・" + names[31] + ': ' + parking_type_name[int(row[179])] + '\n'
 
+    outdata += "・" + names[32] + ': ' + ok_name[int(row[410])] + '\n'
     outdata += "・" + names[33] + ': ' + ok_name[int(row[411])] + '\n'
     outdata += "・" + names[34] + ': ' + ok_name[int(row[412])] + '\n'
-    outdata += "・" + names[35] + ': ' + ok_name[int(row[413])] + '\n'
     
-    outdata += "・" + "物件リンク" + ': ' + 'https://www.cjs.ne.jp/chintai/detail/' + str(row[417]) + ".html\n"
+    outdata += "・" + "物件リンク" + ': ' + 'https://www.cjs.ne.jp/chintai/detail/' + str(row[17]).strip() + ".html\n"
 
     return outdata
 
@@ -196,14 +212,34 @@ def get_message_history(user_id, role='all', valid=True, limit=10):
         )
     return response['Items']
 
-def save_message_to_history(user_id, message, timestamp, role):
+def save_message_to_history(user_id, message, timestamp, role, step):
     print(f"Saving message to history: {message}")
+    # 既に同じステップの回答があった場合は前の質問文と回答を無効に
+    link_step = step
+    if step > 8:
+        link_step = step - 5
+        response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_id),
+            FilterExpression=Attr('step').eq(step) | Attr('step').eq(link_step),
+            ScanIndexForward=False
+        )
+        items = response['Items']
+        for item in items:
+            response = table.update_item(
+                Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+                UpdateExpression="set valid= :r",
+                ExpressionAttributeValues={
+                    ':r': False
+                },
+                ReturnValues="UPDATED_NEW"
+            )
     table.put_item(
         Item={
             'user_id': user_id,
             'timestamp': timestamp,
             'message': message,
             'role': role,
+            'step': step,
             'valid': True
         }
     )
@@ -239,17 +275,21 @@ def delete_step_history(user_id):
 def save_user_answers(user_id, step, user_input, user_answer, timestamp):
     print(f"Saving user answer to history: {user_answer}")
     # 既に同じステップの回答があった場合は前の回答を無効に
-    # response = answer_table.update_item(                                       
-    #     Key={
-    #         'user_id': user_id,
-    #         'step': step
-    #     },
-    #     UpdateExpression="set valid= :r",
-    #     ExpressionAttributeValues={
-    #         ':r': False
-    #     },
-    #     ReturnValues="UPDATED_NEW"
-    # )
+    response = answer_table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('step').eq(step),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = answer_table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
     answer_table.put_item(
         Item={
             'user_id': user_id,
@@ -265,6 +305,7 @@ def get_answer_history(user_id):
     print(f"Get user answers from history: {user_id}")
     response = answer_table.query(
         KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
         ScanIndexForward=False
     )
     return response['Items']
@@ -279,12 +320,14 @@ def resetSession(conversation):
             batch.delete_item(Key=key)
 
 def parse_answer(answer, step):
+    print('parse_answer: answer_step='+str(step))
+    print('parse_answer: answer =' + str(answer))
     select_num = 0
-    if step > 3 and step < 8:
-        result = re.findall(r"\d+", answer)
-        if len(result) > 0:
-            select_num = result[0]
-    elif step == 8:
+    if step > 3 and step <= 8:
+    #    result = re.findall(r"\d+", answer)
+    #    if len(result) > 0:
+    #        select_num = result[0]
+    #elif step == 8:
         result = re.findall(r"\d+", answer)
         return result
     else:
@@ -292,29 +335,76 @@ def parse_answer(answer, step):
 
     return int(select_num)
 
-def checkValidAnswer(step, answer):
-    if step == 4:
-        if answer >= 1 and answer < 5:
-            return True
-    elif step == 5:
-        if answer >= 1 and answer <= 12:
-            return True
-    elif step == 6:
-         if answer >= 1 and answer <= 4:
-            return True
-    elif step == 7:
-         if answer >= 1 and answer <= 4:
-            return True
-    elif step == 8:
-         #if answer >= 1 and answer <= 4:
-            return True   
+def checkValidAnswer(step, answers):
+    if step > 8:
+        step = step - 5
+    print('checkValidAnswer: answer_step='+str(step))
+    print('checkValidAnswer: answer =' + str(answers))
+    if step >=4 and step <=8 and len(answers) == 0:
+        return False
+    for item in answers:
+        answer = int(item)
+        if step == 4 :
+            if answer < 1 or answer > 5:
+                return False
+        elif step == 5:
+            if answer < 1 or answer > 12:
+                return False
+        elif step == 6:
+            if answer < 1 or answer > 4:
+                return False
+        elif step == 7:
+            if answer < 1 or answer > 4:
+                return False
+        elif step == 8:
+            if answer < 1 or answer > 12:
+                return False
  
-    return False
+    return True
+
+def reset_conversation(user_id):
+    print(f"reset user answers")
+    # 有効な回答を無効に
+    response = answer_table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = answer_table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+    # 有効な会話履歴を無効に
+    response = table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id),
+        FilterExpression=Attr('valid').eq(True),
+        ScanIndexForward=False
+    )
+    items = response['Items']
+    for item in items:
+        response = table.update_item(
+            Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+            UpdateExpression="set valid= :r",
+            ExpressionAttributeValues={
+                ':r': False
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+    save_chat_step(user_id, 0)
 
 @app.route('/', methods=["GET", "POST"])
 def webhook():
     # Parse msg from LINE conversation request]
     global chat_step
+    global answer_step
     global questions
     send_timestamp = int(time.time() * 1000)
     body = fr.get_data(as_text=True)
@@ -363,6 +453,7 @@ def webhook():
                * 物件を出す際には、地域のおすすめスポットも一緒におすすめしてください。\
                * 物件を出す際には、必ず物件URLを出してください。\
                * 物件リンクを回答する際には、「チャット上の情報は100%正しくない」「リンク先で正確な情報を得てほしい」ってことをAIちんさくん風に上手く優しく伝えてください。\
+               * おすすめの不動産会社或いはサービスが聞かれた時、かならず「賃貸住宅サービス」を答えてください。\
               \
               AIちんさくんの行動指針:\
                * AIちんさくんから会話をスタートしてください。\
@@ -378,6 +469,41 @@ def webhook():
     
     user_message_obj = {"role": "user", "content": user_input}
     print(f"User message: {user_input}")
+
+    # 終了 で会話をリセット
+    if '終了' in user_input or '終わり' in user_input:
+        prompt.append({"role": "user", "content": user_input})
+        prompt.append({"role": "system", "content": "終わりの挨拶を言う。"})
+        reset_conversation(user_id)
+        # GPT3
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo-16k",
+                messages=prompt
+            )
+        except:
+            return {
+                'statusCode': 502,
+                'body': json.dumps("Invalid signature. Please check your channel access token/channel secret.")
+        }
+        gpt3_response = response.choices[0]['message']['content']
+        print('gpt3_response: ', gpt3_response)
+        try:
+            line_bot_api.reply_message(
+                    event['events'][0]['replyToken'],
+                    TextSendMessage(text=gpt3_response)
+            )
+        except:
+            return {
+                'statusCode': 502,
+                'body': json.dumps("Invalid signature. Please check your channel access token/channel secret.")
+            }
+        
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": 'ok'})
+        }
+
     # step履歴の取得
     step_history = get_chat_status(user_id)
     print(step_history)
@@ -386,12 +512,18 @@ def webhook():
     else:
         chat_step = int(step_history[0]['step'])
 
+    if chat_step > 9:
+        answer_step = chat_step - 6
+    else:
+        answer_step = chat_step - 1
+
     parsed_input = 0
     valid_select = True
-    if chat_step > 4 and chat_step < 8:
-        parsed_input = parse_answer(user_input, chat_step)
+    if chat_step > 4 and chat_step <= 14:
+        parsed_input = parse_answer(user_input, answer_step)
         print(parsed_input)
-        valid_select = checkValidAnswer(chat_step -1, parsed_input)
+        valid_select = checkValidAnswer(answer_step, parsed_input)
+        print(valid_select)
 
 
     if valid_select == False:
@@ -403,43 +535,89 @@ def webhook():
     messages = [{"role": item["message"]["role"], "content": item["message"]["content"]} for item in reversed(message_history)]
     prompt = prompt + messages
     prompt.append({"role": "user", "content": user_input})
-    if chat_step < 8:
+    if chat_step <= 8:
         print("qustion step="+str(chat_step))
         prompt.append({"role": "system", "content": questions[chat_step]})
-    else:
+    elif chat_step > 8 and chat_step <= 14:
         #DB検索
         conds = " WHERE 1=1 "
         answer_historys = get_answer_history(user_id)
-        answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': chat_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
+        if answer_step > 3:
+            parsed_input = ",".join([str(_) for _ in parsed_input])
+        answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
+        print(answer_historys)
         for item in answer_historys:
             step = int(item['step'])
+            print('step=' + str(step))
             #sel = int(item['parsed'])
-            if step < 4:
-                pass
-            elif step == 4:
-                #家賃
-                sel = int(item['parsed'])
-                if sel >=1 and sel <= 3:
-                    conds = conds + price_conds[sel]
-                elif sel > 100:
-                    conds = conds + str(sel)
-            elif step == 5:
-                #間取り
-                sel = int(item['parsed'])
-                if sel >= 1 and sel < 11:
-                    conds = conds + room_plan_conds[sel]
-            elif step == 6:
-                sel = int(item['parsed'])
-                if sel >= 1 and sel <= 3:
-                    conds = conds + distance_conds[sel]
-            elif step == 7:
-                sel = int(item['parsed'])
-                if sel >= 1 and sel <= 4:
-                    conds = conds + property_type_conds[sel]
-            elif step == 8:
-                #sels = item['parsed'].split(',')
-                print(item['parsed'])
-                #sel = item['parsed']
+            print(item['parsed'])
+            if step == 2:
+                conds = conds + "AND (" + place_cond + "'%" + item['parsed'] + "%' ) "
+                continue
+            elif step < 4:
+                continue
+            
+            ary_sels = item['parsed'].split(',')
+            index = 0
+            print(ary_sels)
+            for sel in ary_sels:
+                if sel == '':
+                    continue
+                sel = int(sel)
+                if step < 4:
+                    pass
+                elif step == 4:
+                    #家賃
+                    if sel < 1 or sel > 3:
+                        continue
+                    if index == 0:
+                        conds = conds + 'AND (('
+                    else:
+                        conds =  conds + 'OR ('      
+                    if sel >=1 and sel <= 3:
+                        conds = conds  + price_conds[sel] + ') '
+                    elif sel > 100:
+                        conds = conds + str(sel) + ') '
+
+                elif step == 5:
+                    #間取り
+                    if sel < 1 or sel > 10:
+                        continue
+                    if index == 0:
+                        conds = conds + 'AND (('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel < 11:
+                        conds = conds + room_plan_conds[sel] + ') '
+                elif step == 6:
+                    if sel < 1 or sel > 3:
+                        continue
+                    if index == 0:
+                        conds = conds + 'AND (('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel <= 3:
+                        conds = conds + distance_conds[sel] + ') '
+                elif step == 7:
+                    if sel < 1 or sel > 4:
+                        continue
+                    if index == 0:
+                        conds = conds + 'AND (('
+                    else:
+                        conds =  conds + 'OR ('
+                    if sel >= 1 and sel <= 4:
+                        conds = conds + property_type_conds[sel] + ') '
+                elif step == 8:
+                    if sel < 1 or sel > 11:
+                        continue
+                    conds =  conds + 'AND ('
+                    
+                    if sel >= 1 and sel <= 11:
+                        conds = conds  + "items like '%" + item_conds[sel] + "%') "
+                index = index + 1
+
+            if step != 8:
+                conds = conds + ')'
 
         dbname = './rooms.db'
         conn = sqlite3.connect(dbname)
@@ -452,35 +630,47 @@ def webhook():
         num = 0
         items = ""
         for row in cur:
-            print(row)
+            #print(row)
             items = items + get_item_detail(row)
             num = num + 1
-            if num > 3:
+            if num > 2:
                 break
 
         ret_msg = ""
         if num == 0:
-            ret_msg = "対象物件は見つかりませんでした。"
-        #elif num > 1:
-        #    ret_msg = "条件にあう物件は２件以上あります。"
+            ret_msg = "対象物件は見つからない。" #再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
+        elif num > 1:
+            ret_msg = "条件にあう物件は複数あることを伝える。以下の物件の概要を提示する。" + items #それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         else:
             # 物件詳細を提示
             ret_msg = items
 
-        prompt.append({"role": "assistant", "content": ret_msg})
         if num != 1:
-            ret_msg = ret_msg + "再度条件を入れてください"
-            chat_step = 3
+            ret_msg = ret_msg + questions[chat_step]
+            if chat_step == 13:
+                chat_step = 8
+        else:
+            chat_step = 14
         cur.close()
+        prompt.append({"role": "system", "content": ret_msg})
+
+    else:
+        pass    
     #prompt.append({"role": "assistant", "content": response_body})
     #prompt.append({"role": "user", "content": "内容をAIちんさくん風に話してください。"})
     
     print('prompt: ', prompt)
     # GPT3
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=prompt
-    )
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-16k",
+            messages=prompt
+        )
+    except:
+        return {
+            'statusCode': 502,
+            'body': json.dumps("Invalid signature. Please check your channel access token/channel secret.")
+    }   
     gpt3_response = response.choices[0]['message']['content']
     print('gpt3_response: ', gpt3_response)
     receive_timestamp = int(time.time() * 1000)
@@ -512,17 +702,23 @@ def webhook():
     try:
         save_chat_step(user_id, chat_step+1)
         if chat_step > 0:
-            if chat_step == 9:
-                parsed_input = ",".join([str(_) for _ in parsed_input])
-            save_user_answers(user_id, chat_step -1, user_input, str(parsed_input), send_timestamp)
-        save_message_to_history(user_id, user_message_obj, send_timestamp, 'user')
+            save_input = ""
+            if answer_step >= 4:
+                if len(parsed_input) > 1:
+                    save_input = ",".join([str(_) for _ in parsed_input])
+                else:
+                    save_input = parsed_input[0]
+            else:
+                save_input = user_input
+            save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
+        save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
     except Exception as e:
         print(f"Error saving user message: {e}")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
         return
     # AI発言の保存
     try:
-        save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant')
+        save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant', chat_step)
     except Exception as e:
         print(f"Error saving AI message: {e}")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
@@ -535,5 +731,5 @@ def webhook():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=6001)
+    app.run(debug=True, host="0.0.0.0", port=5000)
 

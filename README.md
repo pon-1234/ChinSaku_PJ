@@ -14,3 +14,14 @@ python create-index.py
 ```
 python query.py '質問文'
 ```
+
+# DB連携方式に変更
+## CSVデータを読み込み、SQLiteのDBファイルに投入
+```
+python3 createDB.py
+```
+
+## Botプロセス起動
+```
+ pm2 start chinsakun.py --name bot --interpreter=python3
+ ```

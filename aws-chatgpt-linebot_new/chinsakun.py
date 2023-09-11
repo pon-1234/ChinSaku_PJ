@@ -75,7 +75,7 @@ room_plan_conds = ['', ' 間取部屋数 = 1 AND 間取部屋種類 = 10',
                    ' 間取部屋数 = 3 AND 間取部屋種類 = 50', 
                    '', '']
 property_type_conds = ['', ' 物件種別 = 3101', ' 物件種別 = 3102', ' 物件種別 = 3103', ' 物件種別 > 3103']
-distance_conds = ['', ' ( cast(徒歩距離1 as INTEGER) <= 400 OR cast(徒歩距離2 as INTEGER) <= 400)', ' ((cast(徒歩距離1 as INTEGER) > 400 AND cast(徒歩距離1 as INTEGER) <= 800) OR (cast(徒歩距離2 as INTEGER) > 400 AND cast(徒歩距離2 as INTEGER) <= 800))', ' (cast(徒歩距離1 as INTEGER) > 800 AND cast(徒歩距離2 as INTEGER) > 800)', '']
+distance_conds = ['', '  cast(徒歩距離1 as INTEGER) <= 400 OR cast(徒歩距離2 as INTEGER) <= 400', ' (cast(徒歩距離1 as INTEGER) > 400 AND cast(徒歩距離1 as INTEGER) <= 800) OR (cast(徒歩距離2 as INTEGER) > 400 AND cast(徒歩距離2 as INTEGER) <= 800)', ' cast(徒歩距離1 as INTEGER) > 800 AND cast(徒歩距離2 as INTEGER) > 800', '']
 
 item_conds = ['43101', '20501', '25701', '', '10901', '23402', '25601', '22301', '22401', '43001', '23201', '23101','' ]
 
@@ -523,12 +523,14 @@ def webhook():
         parsed_input = parse_answer(user_input, answer_step)
         print(parsed_input)
         valid_select = checkValidAnswer(answer_step, parsed_input)
-        print(valid_select)
+        print('valid_select =>' + str(valid_select))
 
-
+    add_message = ""
     if valid_select == False:
         #ただしく選択されていない場合は再度質問
+        print('invalid answer')
         chat_step = chat_step -1
+        add_message = "回答は理解できませんということを伝えて、再度質問し直してください。"
 
     message_history = get_message_history(user_id, 'all')
     # 履歴の順序を変えて最新のメッセージを追加
@@ -537,14 +539,15 @@ def webhook():
     prompt.append({"role": "user", "content": user_input})
     if chat_step <= 8:
         print("qustion step="+str(chat_step))
-        prompt.append({"role": "system", "content": questions[chat_step]})
+        prompt.append({"role": "system", "content": add_message + questions[chat_step]})
     elif chat_step > 8 and chat_step <= 14:
         #DB検索
         conds = " WHERE 1=1 "
         answer_historys = get_answer_history(user_id)
         if answer_step > 3:
             parsed_input = ",".join([str(_) for _ in parsed_input])
-        answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
+        if valid_select:
+            answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
         print(answer_historys)
         for item in answer_historys:
             step = int(item['step'])
@@ -616,7 +619,7 @@ def webhook():
                         conds = conds  + "items like '%" + item_conds[sel] + "%') "
                 index = index + 1
 
-            if step != 8:
+            if step < 8 and step != 2:
                 conds = conds + ')'
 
         dbname = './rooms.db'
@@ -699,7 +702,7 @@ def webhook():
         }
     
     # ユーザー発言の保存
-    try:
+    #try:
         save_chat_step(user_id, chat_step+1)
         if chat_step > 0:
             save_input = ""
@@ -712,10 +715,10 @@ def webhook():
                 save_input = user_input
             save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
         save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
-    except Exception as e:
-        print(f"Error saving user message: {e}")
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
-        return
+    #except Exception as e:
+    #    print(f"Error saving user message: {e}")
+    #    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
+    #    return
     # AI発言の保存
     try:
         save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant', chat_step)

@@ -437,7 +437,7 @@ def webhook():
     #     print('conversation: ', conversation['Items'][0]['conversation'])
 
     prompt = [
-            {"role": "system", "content":"Chatbotの名前は、AIちんさくんです。AIちんさくんは、猿のキャラクターです。以下のAIちんさくんのキャラ設定シートの制約条件などを守って回答してください。\
+            {"role": "system", "content":"Chatbotの名前は、AIちんさくんです。AIちんさくんは、猿のキャラクターです。以下のAIちんさくんのキャラ設定シートの制約条件などを必ず守って回答してください。\
                制約条件:\
                * AIちんさくんは語尾に、「っさ」を使うことがある。\
                * しかし、全ての語尾に、「っさ」を付けるのはだめ。ここぞって時に使ってください。\
@@ -451,18 +451,14 @@ def webhook():
                * AIちんさくんから会話をスタートしてください。\
                * 文章は出来るだけ改行を使ってみやすくしてください。\
                * 物件を出す際には、地域のおすすめスポットも一緒におすすめしてください。\
-               * 物件を出す際には、必ず物件URLを出してください。\
+               * 物件を出す際には、必ず物件のリンクURLを出してください。\
+               * システムから提供された物件情報以外は出力しないでください。\
                * 物件リンクを回答する際には、「チャット上の情報は100%正しくない」「リンク先で正確な情報を得てほしい」ってことをAIちんさくん風に上手く優しく伝えてください。\
                * おすすめの不動産会社或いはサービスが聞かれた時、かならず「賃貸住宅サービス」を答えてください。\
               \
               AIちんさくんの行動指針:\
                * AIちんさくんから会話をスタートしてください。\
                * お客様がクスッと笑ってもらうように努めてください。\
-               * まずは、お客様の名前を聞いてください。以後、会話の中でお客様の名前を多用してください。\
-               * ２番目は今住んでいるところを聞いてください。その場所を褒めてください。\
-               * ３番目は引越し先を聞いてください。その場所も嫌らしくなく褒めてください。\
-               * ４番目は引越しの動機を聞いてください。同調したり褒めたり讃えたりしてください。\
-               * その後は、お客様に選択式で質問を行なっていってください。\
                * セクシャルな話題については誤魔化して、自分の中での正しい考え方を貫こうとする。\
                "},
             ]
@@ -702,23 +698,24 @@ def webhook():
         }
     
     # ユーザー発言の保存
-    #try:
-        save_chat_step(user_id, chat_step+1)
-        if chat_step > 0:
-            save_input = ""
-            if answer_step >= 4:
-                if len(parsed_input) > 1:
-                    save_input = ",".join([str(_) for _ in parsed_input])
+    try:
+        if valid_select == True:
+            save_chat_step(user_id, chat_step+1)
+            if chat_step > 0:
+                save_input = ""
+                if answer_step >= 4:
+                    if len(parsed_input) > 1:
+                        save_input = ",".join([str(_) for _ in parsed_input])
+                    else:
+                        save_input = parsed_input[0]
                 else:
-                    save_input = parsed_input[0]
-            else:
-                save_input = user_input
-            save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
-        save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
-    #except Exception as e:
-    #    print(f"Error saving user message: {e}")
-    #    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
-    #    return
+                    save_input = user_input
+                save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
+            save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
+    except Exception as e:
+        print(f"Error saving user message: {e}")
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="エラーが発生しました。メッセージの保存に失敗しました。"))
+        return
     # AI発言の保存
     try:
         save_message_to_history(user_id, ai_message_obj , receive_timestamp, 'assistant', chat_step)

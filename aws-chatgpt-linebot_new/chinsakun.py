@@ -20,7 +20,7 @@ from flask import Flask, request as fr
 import urllib.request as ur, json
 import re
 import sqlite3
-
+import ast
 
 '''
 Setting LINE
@@ -50,16 +50,18 @@ questions = ['次はかならず名前を聞く',
             '次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
             '次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
             '次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
+            '次はかならず引越し先のエリアを変更するかを聞いてください。変更する場合は、新しい引越し先を聞いてください。',
             'それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない',
             'それからもう一度条件を聞く。次はかならず以下の間取りの希望を質問してください。以下の選択肢を提示する。1:ワンルーム、2:1K、3:1DK、4:1LDK、5:2K、6:2DK、7:2LDK、8:3K、9:3DK、10:3LDK、11:その他、12:決めていない',
             'それからもう一度条件を聞く。次はかならず最寄り駅からの距離を質問してください。1:5分以内、 2:5分～10分、 3:10分以上、 4:その他',
             'それからもう一度条件を聞く。次はかならず以下の物件種別を質問してください。1:マンション、2:ハイツ/アパート、3:一戸建て、4:その他',
             'それからもう一度条件を聞く。次はかならず設備条件で絶対に必要なものは何か下記から聞いてください。複数選択できる。1:バス・トイレ別、2:独立洗面台、3:脱衣所、4:ペット可、5:高速インターネット、6:家具家電付き、7:オートロック、8:エレベーター、9:駐車場、10:バイク置き場、11:原付置き場、12:その他。',
+            'それからもう一度引越し先の変更があるかを聞く。次はかならず引越し先のエリアを変更するかを聞いてください。変更する場合は、新しい引越し先を聞いてください。',
             ]
 
 #会話の進捗ステータス
 # 0: 初期値 1: 名前を聞く 2: 現在の住む場所を聞く 3: 引越し先を聞く　4: 動機を聞く　5: 予算を聞く 6: 間取り、7: 物件種別の希望を以下3つから聞いてください 8: 引越しのご希望の駅や、路線はあるか聞いてください
-# 9: 駅までの徒歩分数を聞いてください 
+# 9: 駅までの徒歩分数を聞いてください 10: 
 
 place_cond = ' Address like '
 price_conds = ['',' cast(賃料 as INTEGER) <= 100000', ' cast(賃料 as INTEGER) > 100000 AND cast(賃料 as INTEGER) <= 150000', ' cast(賃料 as INTEGER) > 150000', '', '']
@@ -126,6 +128,9 @@ answer_table = dynamodb.Table(answer_table_name)
 #物件DB
 #dbname = './rooms.db'
 #conn = sqlite3.connect(dbname)
+
+#エリア変更用
+new_place = None
 
 app = Flask(__name__)
 
@@ -275,12 +280,24 @@ def delete_step_history(user_id):
 def save_user_answers(user_id, step, user_input, user_answer, timestamp):
     print(f"Saving user answer to history: {user_answer}")
     # 既に同じステップの回答があった場合は前の回答を無効に
+    old_step = step
+    response1 = None
+    if step == 9:
+        old_step = 2
+        response1 = answer_table.query(
+            KeyConditionExpression=Key('user_id').eq(user_id),
+            FilterExpression=Attr('step').eq(old_step),
+            ScanIndexForward=False
+        )
     response = answer_table.query(
         KeyConditionExpression=Key('user_id').eq(user_id),
         FilterExpression=Attr('step').eq(step),
         ScanIndexForward=False
     )
     items = response['Items']
+    if response1 != None:
+        items.append(response1['Items'])
+
     for item in items:
         response = answer_table.update_item(
             Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
@@ -290,6 +307,7 @@ def save_user_answers(user_id, step, user_input, user_answer, timestamp):
             },
             ReturnValues="UPDATED_NEW"
         )
+
     answer_table.put_item(
         Item={
             'user_id': user_id,
@@ -319,6 +337,48 @@ def resetSession(conversation):
                 key['timestamp'] = item['timestamp']
             batch.delete_item(Key=key)
 
+def parse_answer2(question, answer, step):
+    print('parse_answer2: answer_step='+str(step))
+    print('parse_answer2: question =' + str(question))
+    print('parse_answer2: answer =' + str(answer))
+    select_num = 0
+    strQA = "質問：" + question + "\n" + "回答：" + answer
+    if step > 3 and step <= 8:
+        answer_parse_prompt =[
+            {"role": "system", "content": f"これは回答の前処理をするプロンプトです。回答内容のデータを以下の処理して返してください。それぞれ選択された番号をリストで返してください。\
+             対応する選択肢がない場合は「noselect」を返してください。\
+             {strQA}"}
+            ]
+        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=answer_parse_prompt)
+        parsed_anwser_str = response["choices"][0]["message"]["content"]
+        print('gpt parsed answer:' + parsed_anwser_str)
+        if 'noselect' in parsed_anwser_str:
+            return []
+        else:
+            parsed_anwser = ast.literal_eval(parsed_anwser_str)
+
+        print(parsed_anwser)
+        if isinstance(parsed_anwser, list) == False:
+            parsed_anwser = [parsed_anwser]
+
+        return parsed_anwser
+    elif step == 9:
+        answer_parse_prompt =[
+            {"role": "system", "content": f"これは回答の前処理をするプロンプトです。回答内容のデータを以下の処理して返してください。新しい引越しエリアを指定した場合はエリア名を返してください。\
+             変更がない場合は「nochange」を返してください。\
+             {strQA}"}
+            ]
+        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=answer_parse_prompt)
+        parsed_anwser_str = response["choices"][0]["message"]["content"]
+        print(parsed_anwser_str)
+        #if parsed_anwser_str == "nochange":
+        #    return None
+        #else:
+        return parsed_anwser_str
+
+    return int(select_num)
+
+# --- 使用しない
 def parse_answer(answer, step):
     print('parse_answer: answer_step='+str(step))
     print('parse_answer: answer =' + str(answer))
@@ -334,10 +394,11 @@ def parse_answer(answer, step):
         pass
 
     return int(select_num)
+#---------
 
 def checkValidAnswer(step, answers):
-    if step > 8:
-        step = step - 5
+    if step > 9:
+        step = step - 6
     print('checkValidAnswer: answer_step='+str(step))
     print('checkValidAnswer: answer =' + str(answers))
     if step >=4 and step <=8 and len(answers) == 0:
@@ -439,8 +500,6 @@ def webhook():
     prompt = [
             {"role": "system", "content":"Chatbotの名前は、AIちんさくんです。AIちんさくんは、猿のキャラクターです。以下のAIちんさくんのキャラ設定シートの制約条件などを必ず守って回答してください。\
                制約条件:\
-               * AIちんさくんは語尾に、「っさ」を使うことがある。\
-               * しかし、全ての語尾に、「っさ」を付けるのはだめ。ここぞって時に使ってください。\
                * 基本はフランクでお願いします。\
                * 敬語はなるべく使わないでください。\
                * 一人称は、「僕」を使って下さい。\
@@ -452,14 +511,16 @@ def webhook():
                * 文章は出来るだけ改行を使ってみやすくしてください。\
                * 物件を出す際には、地域のおすすめスポットも一緒におすすめしてください。\
                * 物件を出す際には、必ず物件のリンクURLを出してください。\
-               * システムから提供された物件情報以外は出力しないでください。\
+               * systemから提供された物件情報以外は絶対回答しないでください。\
                * 物件リンクを回答する際には、「チャット上の情報は100%正しくない」「リンク先で正確な情報を得てほしい」ってことをAIちんさくん風に上手く優しく伝えてください。\
                * おすすめの不動産会社或いはサービスが聞かれた時、かならず「賃貸住宅サービス」を答えてください。\
+               * 物件が見つからない場合は、賃貸住宅サービスの店舗に問い合わせするように勧める。\
               \
               AIちんさくんの行動指針:\
                * AIちんさくんから会話をスタートしてください。\
                * お客様がクスッと笑ってもらうように努めてください。\
                * セクシャルな話題については誤魔化して、自分の中での正しい考え方を貫こうとする。\
+               * 制約条件を守ってください。\
                "},
             ]
     
@@ -508,17 +569,27 @@ def webhook():
     else:
         chat_step = int(step_history[0]['step'])
 
-    if chat_step > 9:
-        answer_step = chat_step - 6
+    if chat_step > 10:
+        answer_step = chat_step - 7
     else:
         answer_step = chat_step - 1
 
     parsed_input = 0
     valid_select = True
-    if chat_step > 4 and chat_step <= 14:
-        parsed_input = parse_answer(user_input, answer_step)
-        print(parsed_input)
-        valid_select = checkValidAnswer(answer_step, parsed_input)
+    if chat_step > 4 and chat_step <= 16:
+        #parsed_input = parse_answer(user_input, answer_step)
+        #print(parsed_input)
+        parsed_input = parse_answer2(questions[answer_step], user_input, answer_step)
+        if answer_step == 9:
+            # エリア変更
+            new_place = parsed_input
+        else:
+            if len(parsed_input) == 0:
+                #正しい選択肢を選択していない
+                valid_select = False
+            else:
+                valid_select = checkValidAnswer(answer_step, parsed_input)
+
         print('valid_select =>' + str(valid_select))
 
     add_message = ""
@@ -533,14 +604,16 @@ def webhook():
     messages = [{"role": item["message"]["role"], "content": item["message"]["content"]} for item in reversed(message_history)]
     prompt = prompt + messages
     prompt.append({"role": "user", "content": user_input})
+    cond_place = None
+    new_place = None
     if chat_step <= 8:
         print("qustion step="+str(chat_step))
         prompt.append({"role": "system", "content": add_message + questions[chat_step]})
-    elif chat_step > 8 and chat_step <= 14:
+    elif chat_step > 8 and chat_step <= 16:
         #DB検索
         conds = " WHERE 1=1 "
         answer_historys = get_answer_history(user_id)
-        if answer_step > 3:
+        if answer_step > 3 and answer_step <=8:
             parsed_input = ",".join([str(_) for _ in parsed_input])
         if valid_select:
             answer_historys.append({'user_id':user_id, 'timestamp':0, 'step': answer_step, 'input': user_input, 'parsed':parsed_input, 'valid':True})
@@ -549,17 +622,24 @@ def webhook():
             step = int(item['step'])
             print('step=' + str(step))
             #sel = int(item['parsed'])
-            print(item['parsed'])
+            print('parsed=' + str(item['parsed']))
             if step == 2:
-                conds = conds + "AND (" + place_cond + "'%" + item['parsed'] + "%' ) "
+                #conds = conds + "AND (" + place_cond + "'%" + item['parsed'] + "%' ) "
+                cond_place = item['parsed']
                 continue
             elif step < 4:
                 continue
-            
-            ary_sels = item['parsed'].split(',')
+            elif step == 9:
+                new_place = item['parsed']
+                #if new_place != "nochange":
+                #    conds = conds + "AND (" + place_cond + "'%" + new_place + "%' ) "
+                continue
+            ary_sels = str(item['parsed']).split(',')
             index = 0
             print(ary_sels)
+            kakko_begin=False
             for sel in ary_sels:
+
                 if sel == '':
                     continue
                 sel = int(sel)
@@ -571,6 +651,7 @@ def webhook():
                         continue
                     if index == 0:
                         conds = conds + 'AND (('
+                        kakko_begin = True
                     else:
                         conds =  conds + 'OR ('      
                     if sel >=1 and sel <= 3:
@@ -584,6 +665,7 @@ def webhook():
                         continue
                     if index == 0:
                         conds = conds + 'AND (('
+                        kakko_begin = True
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel < 11:
@@ -593,6 +675,7 @@ def webhook():
                         continue
                     if index == 0:
                         conds = conds + 'AND (('
+                        kakko_begin = True
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel <= 3:
@@ -602,6 +685,7 @@ def webhook():
                         continue
                     if index == 0:
                         conds = conds + 'AND (('
+                        kakko_begin = True
                     else:
                         conds =  conds + 'OR ('
                     if sel >= 1 and sel <= 4:
@@ -615,9 +699,13 @@ def webhook():
                         conds = conds  + "items like '%" + item_conds[sel] + "%') "
                 index = index + 1
 
-            if step < 8 and step != 2:
+            if step < 8 and step != 2 and kakko_begin:
                 conds = conds + ')'
 
+        if new_place != None and new_place != 'nochange':
+            conds = conds + "AND (" + place_cond + "'%" + new_place + "%' ) "
+        else:
+            conds = conds + "AND (" + place_cond + "'%" + cond_place + "%' ) "
         dbname = './rooms.db'
         conn = sqlite3.connect(dbname)
         cur = conn.cursor()
@@ -637,7 +725,7 @@ def webhook():
 
         ret_msg = ""
         if num == 0:
-            ret_msg = "対象物件は見つからない。" #再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
+            ret_msg = "対象物件は見つからない。賃貸住宅サービスの店舗に問い合わせするように勧める。" #再度条件を入れてください。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         elif num > 1:
             ret_msg = "条件にあう物件は複数あることを伝える。以下の物件の概要を提示する。" + items #それからもう一度条件を聞く。次はかならず以下の予算の選択肢を提示する。1:10万円以下、2:10万円〜15万円、3:15万円以上、4:その他、5:決めていない。"
         else:
@@ -646,10 +734,10 @@ def webhook():
 
         if num != 1:
             ret_msg = ret_msg + questions[chat_step]
-            if chat_step == 13:
-                chat_step = 8
+            if chat_step == 15:
+                chat_step = 9
         else:
-            chat_step = 14
+            chat_step = 16
         cur.close()
         prompt.append({"role": "system", "content": ret_msg})
 
@@ -703,14 +791,18 @@ def webhook():
             save_chat_step(user_id, chat_step+1)
             if chat_step > 0:
                 save_input = ""
-                if answer_step >= 4:
+                if answer_step >= 4 and answer_step != 9:
                     if len(parsed_input) > 1:
                         save_input = ",".join([str(_) for _ in parsed_input])
                     else:
                         save_input = parsed_input[0]
                 else:
                     save_input = user_input
-                save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
+
+                if answer_step == 9 and user_input == 'nochange':
+                    pass
+                else:
+                    save_user_answers(user_id, answer_step, user_input, save_input, send_timestamp)
             save_message_to_history(user_id, user_message_obj, send_timestamp, 'user', answer_step)
     except Exception as e:
         print(f"Error saving user message: {e}")

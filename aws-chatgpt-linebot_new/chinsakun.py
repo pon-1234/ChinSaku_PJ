@@ -109,8 +109,7 @@ ok_name = {0:'不可', 1:'可'}
 
 #自社管理物件番号,,,,,状態,物件種別 ,,,建物名或いは物件名,,,,,部屋/区画NO.,郵便番号,,所在地名称,番地など,番地など2,緯度/経度,路線1,駅1,バス停名1,バス時間1,徒歩距離1,路線2,駅2,バス停名2,バス時間2,徒歩距離2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,建物構造,,建物面積或いは専有面積,,,,,,,新築・未入居フラグ,,,,,,,,間取部屋数,間取部屋種類,間取(種類)1,間取(畳数)1,間取(所在階)1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,物件の特徴,,,,,,,,賃料  ,,,,,,,,礼金,,敷金,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,駐車場区分,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,オンライン内見可,オンライン相談可,IT重説可,,,,物件番号
 names = ['自社管理物件番号', '状態', '物件種別', '建物名或いは物件名', '部屋/区画NO', '郵便番号', '所在地名称', '番地など', '番地など2', '緯度/経度', '路線1', '駅1', 'バス停名1', 'バス時間1',
-          '徒歩距離1', '路線2', '駅2', 'バス停名2', 'バス時間2', '徒歩距離2', '建物構造', '建物面積或いは専有面積', '新築・未入居', '間取部屋数', '間取部屋種類', '間取(種類)1',
-           '間取(畳数)1', '間取(所在階)1', '物件の特徴',  '賃料', '礼金', '敷金', '駐車場区分', 'オンライン内見可', 'オンライン相談可', 'IT重説可', '物件番号' ]
+          '徒歩距離1', '路線2', '駅2', 'バス停名2', 'バス時間2', '徒歩距離2', '建物構造', '建物面積或いは専有面積', '新築・未入居', '間取部屋数', '間取部屋種類', '物件の特徴',  '賃料', '礼金', '敷金', '駐車場区分', 'オンライン内見可', 'オンライン相談可', 'IT重説可', '物件番号' ]
 
 dynamodb = boto3.resource('dynamodb')
 #会話保存テーブル
@@ -137,7 +136,7 @@ app = Flask(__name__)
 def get_item_detail(row):
     #print (row)
     outdata = "以下は物件番号" +str(row[17])+"の詳細情報です。\n"
-    outdata += "・" + names[36] + ': ' + row[17] + '\n'
+    outdata += "・" + names[33] + ': ' + row[17] + '\n'
     print(outdata)
     #outdata += "・" + names[0] + ': ' + str(row[1]) + '\n'
     outdata += "・" + names[1] + ': ' + status_name[int(row[5])] + '\n'
@@ -171,28 +170,33 @@ def get_item_detail(row):
             continue
         outdata += '・間取' + str(i+1) +'の種類: ' + room_type_name[int(row[89+i*4])] + '\n'
         outdata += '・間取' + str(i+1) +'の畳数: ' + str(row[90+i*4]) + '畳\n'
-        outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[91+i*4]) + '階\n'
+        if row[91+i*4] is not None:
+            outdata += '・間取' + str(i+1) +'の所在階: ' + str(row[91+i*4]) + '階\n'
+        else:
+            outdata += '・間取' + str(i+1) +'の所在階: 階\n'
+
         outdata += '・間取' + str(i+1) +'の室数: ' + str(row[92+i*4]) + '室\n'
 
     feature = ""
     if row[130] is not None:
         feature = row[130]
-    outdata += "・" + names[27] + ': ' + feature + '\n'
-    outdata += "・" + names[28] + ': ' + row[138] + '円\n'
+    outdata += "・" + names[25] + ': ' + feature + '\n'
+    #print(row[138])
+    outdata += "・" + names[26] + ': ' + row[138] + '円\n'
     key_money_unit = 'ヶ月'
     deposit_money_unit = 'ヶ月'
-    if (row[145] is not None and int(row[145]) > 100):
+    if (row[145] is not None and int(row[146]) > 100):
         key_money_unit = '円'
-    outdata += names[29] + ': ' + row[146] + key_money_unit + '\n'
-    if (row[147] is not None and int(row[147]) > 100):
+    outdata += names[27] + ': ' + row[146] + key_money_unit + '\n'
+    if (row[147] is not None and int(row[148]) > 100):
         deposit_money_unit = '円'
-    outdata += "・" + names[30] + ': ' + row[148] + deposit_money_unit + '\n'
+    outdata += "・" + names[28] + ': ' + row[149] + deposit_money_unit + '\n'
 
-    outdata += "・" + names[31] + ': ' + parking_type_name[int(row[179])] + '\n'
+    outdata += "・" + names[29] + ': ' + parking_type_name[int(row[179])] + '\n'
 
-    outdata += "・" + names[32] + ': ' + ok_name[int(row[410])] + '\n'
-    outdata += "・" + names[33] + ': ' + ok_name[int(row[411])] + '\n'
-    outdata += "・" + names[34] + ': ' + ok_name[int(row[412])] + '\n'
+    outdata += "・" + names[30] + ': ' + ok_name[int(row[410])] + '\n'
+    outdata += "・" + names[31] + ': ' + ok_name[int(row[411])] + '\n'
+    outdata += "・" + names[32] + ': ' + ok_name[int(row[412])] + '\n'
     
     outdata += "・" + "物件リンク" + ': ' + 'https://www.cjs.ne.jp/chintai/detail/' + str(row[17]).strip() + ".html\n"
 
@@ -289,14 +293,23 @@ def save_user_answers(user_id, step, user_input, user_answer, timestamp):
             FilterExpression=Attr('step').eq(old_step),
             ScanIndexForward=False
         )
+        items1 = response1['Items']
+        for item in items1:
+            response1 = answer_table.update_item(
+                Key= { 'user_id': user_id, 'timestamp': item['timestamp']},
+                UpdateExpression="set valid= :r",
+                ExpressionAttributeValues={
+                    ':r': False
+                },
+                ReturnValues="UPDATED_NEW"
+            )
+
     response = answer_table.query(
         KeyConditionExpression=Key('user_id').eq(user_id),
         FilterExpression=Attr('step').eq(step),
         ScanIndexForward=False
     )
     items = response['Items']
-    if response1 != None:
-        items.append(response1['Items'])
 
     for item in items:
         response = answer_table.update_item(
